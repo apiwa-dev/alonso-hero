@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head><body><pre id="r">corriendo</pre>
+<script src="../js/charts.js"></script><script src="../js/zip.js"></script><script src="../js/biblioteca.js"></script>
+<script src="../js/demo.js"></script><script src="../js/escenario.js"></script><script src="../js/autochart.js"></script><script src="../js/juego.js"></script>
+<script>
+const reg = m => fetch('/registro?' + encodeURIComponent(m)).catch(() => {});
+const out = [], ok = (c, m) => { const l = (c ? 'OK    ' : 'FALLO ') + m; out.push(l); reg(l); document.getElementById('r').textContent = out.join('\n') + '\n...'; };
+addEventListener('error', e => reg('ERROR ' + e.message));
+const near = (a, b) => Math.abs(a - b) < 1e-6;
+const CHART = `[Song]\n{\n  Resolution = 192\n}\n[SyncTrack]\n{\n  0 = TS 4\n  0 = B 120000\n  768 = B 60000\n}\n[ExpertSingle]\n{\n  192 = N 0 0\n  384 = N 1 0\n  384 = N 2 0\n  576 = N 7 0\n  768 = N 4 192\n  960 = N 3 0\n}\n[EasySingle]\n{\n  0 = N 0 0\n}`;
+function midi() {
+  const u32 = n => [n >>> 24 & 255, n >>> 16 & 255, n >>> 8 & 255, n & 255];
+  const vlq = n => { const b = [n & 127]; while (n >>= 7) b.unshift((n & 127) | 128); return b; };
+  const trk = evs => { const b = []; for (const [d, ...x] of evs) b.push(...vlq(d), ...x); b.push(0, 0xff, 0x2f, 0); return [77, 84, 114, 107, ...u32(b.length), ...b]; };
+  const nom = [...'PART GUITAR'].map(c => c.charCodeAt(0));
+  return new Uint8Array([77, 84, 104, 100, 0, 0, 0, 6, 0, 1, 0, 2, 1, 0xE0,
+    ...trk([[0, 0xff, 0x51, 3, 0x07, 0xA1, 0x20]]),
+    ...trk([[0, 0xff, 0x03, nom.length, ...nom], [480, 0x90, 96, 100], [120, 96, 0], [360, 0x90, 97, 100], [0, 98, 100], [120, 0x80, 97, 0], [0, 0x80, 98, 0], [360, 0x90, 100, 100], [960, 0x80, 100, 0]])]).buffer;
+}
+function wav() {
+  const sr = 8000, n = sr, b = new DataView(new ArrayBuffer(44 + n * 2));
+  const s = (o, t) => [...t].forEach((c, i) => b.setUint8(o + i, c.charCodeAt(0)));
+  s(0, 'RIFF'); b.setUint32(4, 36 + n * 2, true); s(8, 'WAVEfmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 1, true);
+  b.setUint32(24, sr, true); b.setUint32(28, sr * 2, true); b.setUint16(32, 2, true); b.setUint16(34, 16, true); s(36, 'data'); b.setUint32(40, n * 2, true);
+  return new Uint8Array(b.buffer);
+}
+async function crearZip(archivos) {
+  const enc = new TextEncoder(), loc = [], cen = []; let off = 0;
+  for (const [nombre, datos, comprimir] of archivos) {
+    const nb = enc.encode(nombre);
+    const c = comprimir ? new Uint8Array(await new Response(new Blob([datos]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer()) : datos;
+    const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(8, comprimir ? 8 : 0, true);
+    h.setUint32(18, c.length, true); h.setUint32(22, datos.length, true); h.setUint16(26, nb.length, true);
+    const ce = new DataView(new ArrayBuffer(46)); ce.setUint32(0, 0x02014b50, true); ce.setUint16(10, comprimir ? 8 : 0, true);
+    ce.setUint32(20, c.length, true); ce.setUint32(24, datos.length, true); ce.setUint16(28, nb.length, true); ce.setUint32(42, off, true);
+    loc.push(new Uint8Array(h.buffer), nb, c); cen.push(new Uint8Array(ce.buffer), nb); off += 30 + nb.length + c.length;
+  }
+  const tc = cen.reduce((a, x) => a + x.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, archivos.length, true); e.setUint16(10, archivos.length, true); e.setUint32(12, tc, true); e.setUint32(16, off, true);
+  return await new Blob([...loc, ...cen, new Uint8Array(e.buffer)]).arrayBuffer();
+}
+(async () => {
+  try {
+    const c = Charts.leerChart(new TextEncoder().encode(CHART).buffer), e = c.tracks.expert;
+    ok(e.length === 5, 'chart: 5 notas expert (' + e.length + ')');
+    ok(near(e[0].time, 0.5), 'chart: tiempo nota 1');
+    ok(e[1].frets === 6, 'chart: acorde rojo+amarillo');
+    ok(e[2].open, 'chart: nota abierta');
+    ok(near(e[3].time, 2), 'chart: cambio de tempo');
+    ok(near(e[3].end, 2.95), 'chart: nota larga recortada (' + e[3].end + ')');
+    ok(near(e[4].time, 3), 'chart: tiempo tras cambio de tempo');
+    ok(c.tracks.easy.length === 1 && !c.tracks.hard, 'chart: dificultades');
+    const m = Charts.leerMidi(midi()), me = m.tracks.expert;
+    ok(me.length === 3, 'midi: 3 notas (' + me.length + ')');
+    ok(near(me[0].time, 0.5) && !me[0].end, 'midi: nota corta');
+    ok(near(me[1].time, 1) && me[1].frets === 6, 'midi: acorde');
+    ok(near(me[2].time, 1.5) && near(me[2].end, 2.5) && me[2].frets === 16, 'midi: nota larga');
+    const ini = new TextEncoder().encode('[song]\nname = Prueba\nartist = Banda <b>X</b>\n');
+    const z = await crearZip([['Mi Cancion/notes.chart', new TextEncoder().encode(CHART), true], ['Mi Cancion/song.ini', ini, false], ['Mi Cancion/song.wav', wav(), true], ['Mi Cancion/album.png', new Uint8Array(4), false]]);
+    const mapa = await Zip.leer(z);
+    ok(mapa.size === 4 && new TextDecoder().decode(mapa.get('Mi Cancion/notes.chart')) === CHART, 'zip: descomprime');
+    for (const x of await Biblioteca.listar()) await Biblioteca.borrar(x.id);
+    ok(await Biblioteca.importar(mapa, 'x') === 1, 'biblioteca: importa');
+    const l = await Biblioteca.listar();
+    ok(l.length === 1 && l[0].titulo === 'Prueba' && l[0].artista === 'Banda X', 'biblioteca: lista ' + JSON.stringify(l.map(x => x.titulo)));
+    const oac = new OfflineAudioContext(2, 44100, 44100);
+    const datos = await Biblioteca.cargar(l[0], oac);
+    ok(datos.buffers.length === 1 && datos.chart.tracks.expert.length === 5, 'biblioteca: carga canción y audio');
+    await Biblioteca.borrar(l[0].id);
+    ok((await Biblioteca.listar()).length === 0, 'biblioteca: borra');
+    let d;
+    for (const inc of Incluidas.LISTA) {
+      const t0 = performance.now(), x = await Incluidas.crear(inc.id), tr = x.chart.tracks;
+      ok(x.buffers[0].duration > 50 && tr.easy.length < tr.medium.length && tr.medium.length < tr.hard.length,
+        `incluida ${inc.titulo}: ${x.buffers[0].duration.toFixed(0)} s, notas ${['easy', 'medium', 'hard', 'expert'].map(k => tr[k].length).join('/')}, ${Math.round(performance.now() - t0)} ms`);
+      if (!d) d = x;
+    }
+    for (const inc of [Incluidas.LISTA[0], Incluidas.LISTA[2]]) {
+      const t1 = performance.now(), x = await Incluidas.crear(inc.id), r = AutoChart.crear(x.buffers[0], 'Banda Prueba - Tema.mp3');
+      const err = Math.min(...[0.5, 1, 2].map(m => Math.abs(r.bpm - inc.bpm * m)));
+      ok(err < 2, `autochart ${inc.titulo}: tempo detectado ${r.bpm} (real ${inc.bpm}), notas ${['easy', 'medium', 'hard', 'expert'].map(k => (r.chart.tracks[k] || []).length).join('/')}, ${Math.round(performance.now() - t1)} ms`);
+      const vuelta = Charts.leerChart(new TextEncoder().encode(r.texto).buffer);
+      ok(vuelta.tracks.expert.length === r.chart.tracks.expert.length && Math.abs(vuelta.tracks.expert[5].time - r.chart.tracks.expert[5].time) < 0.01, 'autochart: .chart guardado se vuelve a leer igual');
+      ok(r.titulo === 'Tema' && r.artista === 'Banda Prueba', 'autochart: título y artista desde el nombre del archivo');
+    }
+    const param = () => ({ value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} });
+    const nodo = () => ({ gain: param(), frequency: param(), connect() {}, disconnect() {}, start() {}, stop() {} });
+    const fake = { currentTime: 0, outputLatency: 0, baseLatency: 0, destination: {}, createGain: nodo, createBufferSource: nodo, createOscillator: nodo, createBiquadFilter: nodo };
+    const lz = document.createElement('canvas'); lz.width = 1280; lz.height = 720;
+    const j = new Juego(lz, fake, { chart: c, buffers: [] }, 'expert'); j.iniciar();
+    j.entrada({ tipo: 'fret', lane: 0, t: 3.02, held: 0 });
+    ok(j.aciertos === 1, 'juego: acierta nota simple');
+    j.entrada({ tipo: 'fret', lane: 1, t: 3.5, held: 0 });
+    ok(j.aciertos === 1, 'juego: acorde incompleto no cuenta');
+    j.entrada({ tipo: 'fret', lane: 2, t: 3.51, held: 2 });
+    ok(j.aciertos === 2, 'juego: acorde completo');
+    j.entrada({ tipo: 'rasgueo', t: 4.0, held: 0 });
+    ok(j.aciertos === 3 && j.combo === 3, 'juego: nota abierta con rasgueo');
+    j.entrada({ tipo: 'fret', lane: 0, t: 4.5, held: 0 });
+    ok(j.aciertos === 3, 'juego: botón equivocado no cuenta');
+    fake.currentTime = 5.0; j.actualizar(); j.dibujar();
+    ok(j.combo === 0 && j.notas[3].miss, 'juego: nota fallada reinicia combo');
+    fake.currentTime = 20; j.actualizar();
+    ok(j.estado === 'fin' && j.resultados().total === 5, 'juego: termina ' + JSON.stringify(j.resultados()));
+    const jd = new Juego(lz, fake, { chart: d.chart, buffers: d.buffers }, 'easy'); jd.iniciar(); fake.currentTime += 5; jd.actualizar(); jd.dibujar();
+    ok(true, 'juego: dibuja la demo');
+  } catch (err) { out.push('ERROR ' + err.message + '\n' + err.stack); reg('ERROR ' + err.message + ' ' + err.stack); }
+  reg('FIN');
+  document.getElementById('r').textContent = out.join('\n') + '\nFIN';
+})();
+</script></body></html>

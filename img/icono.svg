@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="fondo" cx="50%" cy="62%" r="70%">
+      <stop offset="0" stop-color="#7f1d1d"/><stop offset=".55" stop-color="#2a0606"/><stop offset="1" stop-color="#050101"/>
+    </radialGradient>
+    <linearGradient id="llamaExt" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#fde047"/><stop offset=".45" stop-color="#f97316"/><stop offset="1" stop-color="#dc2626" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="llamaInt" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#fffbeb"/><stop offset=".5" stop-color="#fde047"/><stop offset="1" stop-color="#f97316" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="oro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fef9c3"/><stop offset=".35" stop-color="#facc15"/><stop offset=".7" stop-color="#ca8a04"/><stop offset="1" stop-color="#854d0e"/>
+    </linearGradient>
+    <linearGradient id="rayo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fca5a5"/><stop offset=".4" stop-color="#ef4444"/><stop offset="1" stop-color="#991b1b"/>
+    </linearGradient>
+    <filter id="brillo" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="4" y="4" width="248" height="248" rx="52" fill="url(#fondo)"/>
+  <rect x="4" y="4" width="248" height="248" rx="52" fill="none" stroke="#f97316" stroke-opacity=".55" stroke-width="5"/>
+  <path d="M28 236 Q34 170 64 190 Q60 120 104 158 Q112 84 128 132 Q146 80 154 158 Q196 118 192 190 Q222 170 228 236 Z" fill="url(#llamaExt)"/>
+  <path d="M62 236 Q72 196 92 206 Q100 160 128 186 Q156 160 164 206 Q184 196 194 236 Z" fill="url(#llamaInt)"/>
+  <g filter="url(#brillo)">
+    <path d="M128 30 C184 30 214 50 214 80 C214 128 160 186 128 214 C96 186 42 128 42 80 C42 50 72 30 128 30 Z" fill="url(#oro)" stroke="#1c0a00" stroke-width="9"/>
+  </g>
+  <path d="M92 52 C108 44 140 42 168 50" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".75"/>
+  <polygon points="146,46 98,128 126,128 106,198 170,106 140,106 160,46" fill="url(#rayo)" stroke="#1c0a00" stroke-width="8" stroke-linejoin="round"/>
+</svg>

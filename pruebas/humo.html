@@ -1,0 +1,26 @@
+<!DOCTYPE html><html><body><iframe id="f" src="/" width="1280" height="720"></iframe><script>
+const reg = m => fetch('/registro?' + encodeURIComponent(m)).catch(() => {});
+const f = document.getElementById('f');
+f.addEventListener('load', () => {
+  const w = f.contentWindow, d = f.contentDocument;
+  w.addEventListener('error', e => reg('ERROR ' + e.message));
+  w.addEventListener('unhandledrejection', e => reg('ERROR promesa ' + (e.reason && e.reason.message)));
+  reg('titulo=' + d.title + ' h1=' + d.querySelector('h1').textContent + ' botones=' + d.querySelectorAll('.btn').length);
+  const t0 = performance.now();
+  d.querySelector('[data-acc=canciones]').click();
+  const esperar = (cond, cb, n = 0) => (cond() ? cb() : n > 300 ? reg('ERROR timeout ' + d.querySelector('.marco').textContent) : setTimeout(() => esperar(cond, cb, n + 1), 100));
+  esperar(() => d.querySelector('[data-arg=demo]'), () => {
+    reg('lista de canciones OK');
+    d.querySelector('[data-arg=demo]').click();
+    esperar(() => d.querySelector('[data-acc=jugar]'), () => {
+      reg('demo preparada en ' + Math.round(performance.now() - t0) + ' ms; dificultades=' + [...d.querySelectorAll('[data-acc=jugar]:not([disabled])')].map(b => b.dataset.arg).join(','));
+      d.querySelector('[data-arg=easy]').click();
+      setTimeout(() => {
+        const lz = d.getElementById('lienzo');
+        reg('juego: lienzo visible=' + !lz.hidden + ' menu oculto=' + d.getElementById('pantalla').hidden);
+        reg('FIN');
+      }, 4000);
+    });
+  });
+});
+</script></body></html>

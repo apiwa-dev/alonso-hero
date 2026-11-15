@@ -1,0 +1,4 @@
+dist/
+*.log
+musica/*
+!musica/LEEME.txt

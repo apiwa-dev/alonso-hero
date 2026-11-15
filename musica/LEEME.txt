@@ -1,0 +1,8 @@
+Deja aquí los MP3 (o .ogg, .wav, .m4a, .flac) que quieras tocar.
+También sirven los .zip de canciones de Clone Hero.
+
+La próxima vez que se abra Alonso Hero, el juego crea las notas solo
+y las canciones aparecen en la lista. No hay que hacer nada más.
+
+Consejo: si el archivo se llama "Artista - Canción.mp3", el juego
+muestra bien el nombre del artista y de la canción.
