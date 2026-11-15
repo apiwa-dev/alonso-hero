@@ -5,7 +5,8 @@
   #define MyAppVersion "0.0.0"
 #endif
 #define PowerShell "{sys}\WindowsPowerShell\v1.0\powershell.exe"
-#define Lanzar "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{app}\iniciar.ps1"""
+; Las comillas se escriben cuádruples: el preprocesador las reduce a dobles, que es como Inno las espera dentro de Parameters.
+#define Lanzar "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File """"{app}\iniciar.ps1"""""
 
 [Setup]
 AppId={{197EF040-F710-40E8-B6C9-1E923EE0F418}
